@@ -3,7 +3,6 @@
 # train RNN for prediction
 # Naive Bias on character predicition
 #
-
 import json
 import gzip
 from copy import deepcopy
@@ -20,15 +19,15 @@ global listNullCats
 #######################
 # SOME VARIABLES
 #######################
-v_lastWordsSize = 20
-v_sampleReviewSize = 10000
+v_lastWordsSize = 10
+v_sampleReviewSize = 100
 v_samplePackageSize = 100
 v_feedbackFrequency = 100
-v_version = 1
+v_version = 2
 v_splitString = " "
 v_replaceInString = ["&quot", "\"", "(", ")", ";"]
 v_learningAlgorithm = "" #not implemented yet
-v_maxReview = 330
+v_maxReview = 200
 # features
 v_activateCategories = False
 v_activateRating = True
@@ -187,11 +186,14 @@ def generateSamples(start, end, metaData, worddic, featurelist):
         name = metaData[product]["title"]
         price = metaData[product]["price"]
         categories = getUniqueCategoriesSingle(metaData[review["asin"]])
-        splitted = text.split(" ")
-        splitted.insert(0, "#None")
-        if(splitted==None):
+
+        #generate first sample
+        text = '\n'.join(' '.join(line.split()) for line in text.splitlines())
+        text = " "+text.lower()
+        #text = " asdfg"
+        if(text==None):
             continue
-        for i,word in enumerate(splitted):
+        for i,word in enumerate(text):
             index = worddic.index(word)
             lastwords.append(index)
             lastwords.pop(0)
@@ -202,16 +204,23 @@ def generateSamples(start, end, metaData, worddic, featurelist):
                 idx = uniqueCats.index(cat)
                 catFeatures[idx] = 1.0
 
-            #concat our features to one vector
-            if(i==len(splitted)-1):
+            if i==0:
+                lastwords.pop()
+                lastwords.append(2)
+                #labels.append(0)
+                next_word = text[i+1]
+                index = worddic.index(next_word)
+                labels.append(index)
+            elif(i==len(text)-1):
                 #eot
                 #label is #EndOfText
                 labels.append(1)
             else:
-                next_word = splitted[i+1]
+                next_word = text[i+1]
                 index = worddic.index(next_word)
                 labels.append(index)
             sample = generateFeatures(featurelist, lastwords, catFeatures, stars, price, name)
+            #print(sample, labels[-1])
             samples.append(np.array(sample))
     #print("Done!")
     samples = np.array(samples)
@@ -243,15 +252,27 @@ def generateReview(classifier, product, featurelist, worddictionary, randomness=
         idx = uniqueCats.index(cat)
         catFeatures[idx] = 1.0
 
-    text = [worddic[0]]
+    text = [" "]
+    #print(worddic)
     while (text[-1]!=worddic[1] and len(text) < v_maxReview):
         sample = generateFeatures(featurelist, lastwords, catFeatures, stars, price, name)
-        prediction = classifier.predict_proba(np.array([np.array(sample)]))
-        idx = np.argmax(prediction[0])
-        word = worddictionary[idx]
-        text.append(word)
-        lastwords.pop(0)
-        lastwords.append(idx)
+        print(sample)
+        if(True):
+            prediction = classifier.predict(np.array([np.array(sample)]))
+            print(prediction)
+            word = worddictionary[prediction[0]]
+            text.append(word)
+            #print(word, idx, lastwords, prediction)
+            lastwords.pop(0)
+            lastwords.append(prediction[0])
+        else:
+            prediction = classifier.predict_proba(np.array([np.array(sample)]))
+            idx = np.argsort(prediction)
+            word = worddictionary[idx[0][-2]]
+            text.append(word)
+            #print(word, idx, lastwords, prediction)
+            lastwords.pop(0)
+            lastwords.append(idx[0][-2])
     return text
 
 #######################
@@ -268,6 +289,7 @@ if __name__ == '__main__':
     print("Done!")
     print("reading review Data ...")
     reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", 0, v_sampleReviewSize)
+    revLen = len(reviewsData)
     print("Done!")
 
 
@@ -285,12 +307,11 @@ if __name__ == '__main__':
     worddic= ["#beginningOfText", "#endOfText", "#None"]
     for epoch, review in enumerate(reviewsData):
         if (epoch % v_feedbackFrequency == 0):
-            print(str(epoch)+"/"+str(v_sampleReviewSize))
-        text = review["reviewText"]
+            print(str(epoch)+"/"+str(revLen))
+        text = review["reviewText"].lower()
         for replacement in v_replaceInString:
             text = text.replace(replacement, "")
-        splitted = text.split(v_splitString)
-        for word in splitted:
+        for word in text:
             if word not in worddic:
                 worddic.append(word)
     print("Done! Created worddic with size " + str(len(worddic)))
@@ -313,7 +334,7 @@ if __name__ == '__main__':
     print("generating test review...")
     review_product = {"categories":[uniqueCats[0]], "price":9.99, "stars":3.0, "name":"Ulala"}
     review_text = generateReview(clf, review_product, sampletype, worddic, False)
-    text = " ".join(review_text)
+    text = "".join(review_text)
     print("Done! The review is following:")
     print(text)
     #print("test prediction...")
