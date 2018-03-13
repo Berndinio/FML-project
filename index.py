@@ -68,14 +68,10 @@ def getUniqueBrandNames(metaData):
     print(str(i)+" without brands.")
     return list(output)
 
-def generateClassifier():
-    print("Generating classifier")
-    return MultinomialNB()
 
-def trainClassifier(classifier, samples, labels, worddicSize):
-    print("Training classifier...")
-    classifier.partial_fit(samples, labels, range(worddicSize))
-    print("Done partial training!")
+#######################
+# SAVING FEATURES
+#######################
 
 def saveClassifier(classifier, version=0):
     print("saving classifier to file, verion = " + str(version))
@@ -118,6 +114,19 @@ def loadWorddic(version=0):
     objectsLoaded = pickle.load(f)
     return objectsLoaded
     print("Done loading!")
+
+#######################
+# LEARNING
+#######################
+
+def generateClassifier():
+    print("Generating classifier")
+    return MultinomialNB()
+
+def trainClassifier(classifier, samples, labels, worddicSize):
+    print("Training classifier...")
+    classifier.partial_fit(samples, labels, range(worddicSize))
+    print("Done partial training!")
 
 def generateSamples(start, end, reviewsData, metaData, worddic):
     samples = []
@@ -166,7 +175,12 @@ def generateSamples(start, end, reviewsData, metaData, worddic):
     labels = np.array(labels)
     return samples, labels
 
+#######################
+# MAIN LOOP
+#######################
+
 if __name__ == '__main__':
+    # some loading
     print("reading meta data ...")
     metaData = dataToDict("data/music/meta_Digital_Music.json.gz")
     print("Done!")
@@ -174,6 +188,8 @@ if __name__ == '__main__':
     reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", 0, v_sampleReviewSize)
     revLen = len(reviewsData)
     print("Done!")
+
+    # fining categories
     print("unification of categories ...")
     uniqueCats = getUniqueCategories(metaData)
     print("Done!")
@@ -181,9 +197,10 @@ if __name__ == '__main__':
     listNullCats = []
     for i in range(lenUniqueCats):
         listNullCats.append(0)
-    worddic= ["#beginningOfText", "#endOfText", "#None"]
 
+    # creating dictionary of words
     print("creating worddic...")
+    worddic= ["#beginningOfText", "#endOfText", "#None"]
     for epoch, review in enumerate(reviewsData):
         if (epoch % v_feedbackFrequency == 0):
             print(str(epoch)+"/"+str(revLen))
@@ -194,10 +211,10 @@ if __name__ == '__main__':
                 worddic.append(word)
     print("Done! Created worddic with size " + str(len(worddic)))
 
-    #######
-
+    # chosen Classifier
     clf = generateClassifier()
 
+    # step-wise learning
     for i in range (int(v_sampleReviewSize / v_samplePackageSize)+1):
         start = i * v_samplePackageSize
         end = min((i+1)*v_samplePackageSize, v_sampleReviewSize)
