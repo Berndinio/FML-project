@@ -26,7 +26,7 @@ v_samplePackageSize = 100
 v_feedbackFrequency = 100
 v_version = 1
 v_splitString = " "
-v_replaceInString = ["&quot", "\"", "(", ")", ";"]
+v_replaceInString = ["&quot;", "\"", "(", ")", ";"]
 v_learningAlgorithm = "" #not implemented yet
 v_maxReview = 330
 # features

@@ -1,5 +1,5 @@
 #source: https://machinelearningmastery.com/text-generation-lstm-recurrent-neural-networks-python-keras/
-
+#paper: https://arxiv.org/pdf/1708.08151.pdf
 
 # Larger LSTM Network to Generate Text for Amazon reviews
 import numpy
@@ -14,7 +14,34 @@ import os.path
 #from keras.callbacks import ModelCheckpoint
 #from keras.utils import np_utils
 
+#######################
+# SOME VARIABLES
+#######################
+# main control variables
 v_sampleReviewSize = 100
+v_feedbackFrequency = 100
+v_sequenceLength = 100
+
+# text manipulation variables
+v_messageStart = chr(2)
+v_messageEnd = chr(3)
+v_chooseTrainingRatingRangeStart = 4.0
+v_chooseTrainingRatingRangeEnd = 5.0
+v_replaceInString = ["&quot;", "\""]
+v_manipulateTrainingReplace = True
+v_manipulateTrainingLower = False
+v_manipulateTrainingRemoveNonASCII = True
+v_manipulateTrainingRemoveAdditionalWhitespaces = True
+
+# RNN variables
+v_batchSize = 256
+v_layerSize = 1024
+v_epochs = 20
+v_activateSecondLayer = True
+
+#######################
+# SOME FUNCTIONS
+#######################
 
 def parse(path):
     g = gzip.open(path, 'r')
@@ -23,22 +50,42 @@ def parse(path):
 
 def dataToList(path, start, end):
     data = []
-    for counter, item in enumerate(parse(path)):
+    counter = 0
+    for item in parse(path):
         if (counter >= end):
             return data
-        if (counter >= start):
+        if (counter >= start) and
+        (item["rating"] >= v_chooseTrainingRatingRangeStart) and
+        (item["rating"] <= v_chooseTrainingRatingRangeEnd):
             data.append(item)
+            counter +=1
     return data
+
+#######################
+# INPUT PREPARATION
+#######################
 
 # load ascii text and covert to lowercase
 print("reading review Data ...")
 reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", 0, v_sampleReviewSize)
-message_start = chr(2)
-message_end = chr(3)
+
 raw_text = ""
-for review in reviewsData:
-    raw_text = raw_text + message_start + review["text"] + message_end
-raw_text = raw_text.lower()
+for epoch, review in enumerate(reviewsData):
+    if (epoch % v_feedbackFrequency == 0):
+        print(str(epoch)+"/"+str(v_sampleReviewSize))
+    review_text = review["text"]
+    if v_manipulateTrainingRemoveNonASCII:
+        review_text = ''.join([x for x in review_text if ord(x) < 128])
+    if v_manipulateTrainingReplace:
+        for replacement in v_replaceInString:
+            review_text = review_text.replace(replacement, "")
+    if v_manipulateTrainingRemoveAdditionalWhitespaces:
+        review_text = '\n'.join(' '.join(line.split()) for line in review_text.splitlines())
+    raw_text = raw_text + v_messageStart + review_text + v_messageEnd
+
+if v_manipulateTrainingLower:
+    raw_text = raw_text.lower()
+
 print("Done!")
 # create mapping of unique chars to integers
 chars = sorted(list(set(raw_text)))
@@ -52,7 +99,7 @@ print ("Total Vocab: " + str(n_vocab))
 asdasd
 
 # prepare the dataset of input to output pairs encoded as integers
-seq_length = 100
+seq_length = v_sequenceLength
 dataX = []
 dataY = []
 for i in range(0, n_chars - seq_length, 1):
@@ -72,8 +119,9 @@ y = np_utils.to_categorical(dataY)
 model = Sequential()
 model.add(LSTM(256, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
 model.add(Dropout(0.2))
-model.add(LSTM(256))
-model.add(Dropout(0.2))
+if v_activateSecondLayer:
+    model.add(LSTM(256))
+    model.add(Dropout(0.2))
 model.add(Dense(y.shape[1], activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='adam')
 # define the checkpoint
@@ -81,4 +129,4 @@ filepath="weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
 callbacks_list = [checkpoint]
 # fit the model
-model.fit(X, y, epochs=50, batch_size=64, callbacks=callbacks_list)
+model.fit(X, y, epochs=v_epochs, batch_size=v_batchSize, callbacks=callbacks_list)
