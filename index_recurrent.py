@@ -7,18 +7,20 @@ import json
 import gzip
 import os.path
 
-#from keras.models import Sequential
-#from keras.layers import Dense
-#from keras.layers import Dropout
-#from keras.layers import LSTM
-#from keras.callbacks import ModelCheckpoint
-#from keras.utils import np_utils
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import Dropout
+from keras.layers import LSTM
+from keras.callbacks import ModelCheckpoint
+from keras.utils import np_utils
+
+import tensorflow as tf
 
 #######################
 # SOME VARIABLES
 #######################
 # main control variables
-v_sampleReviewSize = 100
+v_sampleReviewSize = 10
 v_feedbackFrequency = 100
 v_sequenceLength = 100
 
@@ -54,9 +56,7 @@ def dataToList(path, start, end):
     for item in parse(path):
         if (counter >= end):
             return data
-        if (counter >= start) and
-        (item["rating"] >= v_chooseTrainingRatingRangeStart) and
-        (item["rating"] <= v_chooseTrainingRatingRangeEnd):
+        if (counter >= start) and (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
             data.append(item)
             counter +=1
     return data
@@ -73,7 +73,7 @@ raw_text = ""
 for epoch, review in enumerate(reviewsData):
     if (epoch % v_feedbackFrequency == 0):
         print(str(epoch)+"/"+str(v_sampleReviewSize))
-    review_text = review["text"]
+    review_text = review["reviewText"]
     if v_manipulateTrainingRemoveNonASCII:
         review_text = ''.join([x for x in review_text if ord(x) < 128])
     if v_manipulateTrainingReplace:
@@ -96,8 +96,6 @@ n_vocab = len(chars)
 print ("Total Characters: "+ str(n_chars))
 print ("Total Vocab: " + str(n_vocab))
 
-asdasd
-
 # prepare the dataset of input to output pairs encoded as integers
 seq_length = v_sequenceLength
 dataX = []
@@ -116,11 +114,13 @@ X = X / float(n_vocab)
 # one hot encode the output variable
 y = np_utils.to_categorical(dataY)
 # define the LSTM model
+#gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1/10)
+#sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=True))
 model = Sequential()
-model.add(LSTM(256, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
+model.add(LSTM(v_layerSize, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
 model.add(Dropout(0.2))
 if v_activateSecondLayer:
-    model.add(LSTM(256))
+    model.add(LSTM(v_layerSize))
     model.add(Dropout(0.2))
 model.add(Dense(y.shape[1], activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='adam')
@@ -129,4 +129,5 @@ filepath="weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
 callbacks_list = [checkpoint]
 # fit the model
+print("fitting model")
 model.fit(X, y, epochs=v_epochs, batch_size=v_batchSize, callbacks=callbacks_list)
