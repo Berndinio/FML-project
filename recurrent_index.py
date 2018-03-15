@@ -16,6 +16,7 @@ from keras.utils import np_utils
 
 import tensorflow as tf
 
+from recurrent_model import getModel
 #######################
 # SOME VARIABLES
 #######################
@@ -116,18 +117,14 @@ y = np_utils.to_categorical(dataY)
 # define the LSTM model
 #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1/10)
 #sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=True))
-model = Sequential()
-model.add(LSTM(v_layerSize, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
-model.add(Dropout(0.2))
-if v_activateSecondLayer:
-    model.add(LSTM(v_layerSize))
-    model.add(Dropout(0.2))
-model.add(Dense(y.shape[1], activation='softmax'))
+model = getModel(v_layerSize, X, y, v_activateSecondLayer)
 model.compile(loss='categorical_crossentropy', optimizer='adam')
 # define the checkpoint
-filepath="weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
-checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-callbacks_list = [checkpoint]
+
 # fit the model
-print("fitting model")
-model.fit(X, y, epochs=v_epochs, batch_size=v_batchSize, callbacks=callbacks_list)
+for i in range(v_epochs):
+    filepath="savings-LSTM/weights-improvement-"+str(i)+"-{loss:.4f}-bigger.hdf5"
+    checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
+    callbacks_list = [checkpoint]
+    print("fitting model")
+    model.fit(X, y, epochs=1, batch_size=v_batchSize, callbacks=callbacks_list)
