@@ -25,11 +25,11 @@ global listNullCats
 # how much words are viewed at during classification
 v_sequenceLength = 5
 # how many reviews should be used for training?
-v_sampleReviewSize = 100
+v_sampleReviewSize = 1000
 # how many reviews should be trained at once? (lower if RAM is overloaded)
-v_samplePackageSize = 10
+v_samplePackageSize = 100
 # which timestamps should be saved and feedbacked?
-v_feedbackFrequency = 1
+v_feedbackFrequency = 10
 # savings folder in use
 v_version = 1
 
@@ -89,9 +89,10 @@ def load_basic_wordlist():
 def dataToList(path, start, end, worddic):
     data = []
     counter = 0
+    final_counter = 0
     jumped = 0
     for item in parse(path):
-        if (counter >= end):
+        if (final_counter >= end):
             return data, jumped
         if (counter <= start):
             counter += 1
@@ -109,10 +110,10 @@ def dataToList(path, start, end, worddic):
                             simple = False
                             break
                     if simple:
-                        counter +=1
+                        final_counter +=1
                         data.append(item)
                 else:
-                    counter +=1
+                    final_counter +=1
                     data.append(item)
     return data, jumped
 
@@ -181,12 +182,10 @@ def loadObject(restFilePath ,version=0):
 def saveClassifier(classifier, filename ,version=0):
     print("saving classifier to file, version = " + str(version))
     saveObject(classifier, "classifier/"+filename, version)
-    print("Done saving!")
 
 def saveWorddic(worddic, filename ,version=0):
     print("saving worddic to file, version = " + str(version))
     saveObject(worddic, "worddic/"+filename, version)
-    print("Done saving!")
 
 def loadClassifier(filename, version=0):
     print("loading classifier from file, version = " + str(version))
@@ -235,16 +234,17 @@ def trainClassifier(classifier, samples, labels, worddicSize):
     classifier.partial_fit(samples, labels, range(worddicSize))
     print("Done partial training!")
 
-def generateSamples(start, end, metaData, worddic, featurelist):
+def generateSamples(start, end, metaData, worddic, featurelist, iteration):
     global uniqueCats
     global listNullCats
+    print("Called generate samples with jumped=" + str(start) + " and end=" + str(end))
 
     samples = []
     labels = []
-    reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", start, end, worddic)
+    reviewsData, jumped = dataToList("data/music/reviews_Digital_Music.json.gz", start, end, worddic)
     for epoch, review in enumerate(reviewsData):
-        if ((start+epoch) % v_feedbackFrequency == 0):
-            print("samples generated:" + str(start+epoch)+"/"+str(v_sampleReviewSize))
+        if (((iteration*v_samplePackageSize) +epoch) % v_feedbackFrequency == 0):
+            print("samples generated:" + str(((iteration*v_samplePackageSize) +epoch))+"/"+str(v_sampleReviewSize))
         lastwords = []
         for i in range(v_sequenceLength):
             lastwords.append(2)
@@ -294,7 +294,7 @@ def generateSamples(start, end, metaData, worddic, featurelist):
     #print("Done!")
     samples = np.array(samples)
     labels = np.array(labels)
-    return samples, labels
+    return samples, labels , jumped
 
 #######################
 # GENERATE A REV
@@ -323,7 +323,7 @@ def generateReview(classifier, product, featurelist, worddictionary, randomness=
 
     text = [worddic[0]]
     while (text[-1]!=worddic[1] and len(text) < v_maxReviewOutputLength):
-        sample = generateFeatures(featurelist, lastwords, catFeatures, stars, price, name)
+        sample = generateFeatures(featurelist, lastwords, catFeatures, stars, price, name, len(text))
         prediction = classifier.predict_proba(np.array([np.array(sample)]))
         idx = np.argmax(prediction[0])
         word = worddictionary[idx]
@@ -369,7 +369,7 @@ if __name__ == '__main__':
 
     if not v_chooseSimpleWords:
         print("reading review Data ...")
-        reviewsData, trash = dataToList("data/music/reviews_Digital_Music.json.gz", jumping_point, v_sampleReviewSize, worddic)
+        reviewsData, trash = dataToList("data/music/reviews_Digital_Music.json.gz", jumping_point, v_sampleReviewSize+1, worddic)
         print("Done! Choosen " + str(len(reviewsData)) + " reviews fitting criteria. Aim was " + str(v_sampleReviewSize))
         print("creating worddic...")
         for epoch, review in enumerate(reviewsData):
@@ -390,11 +390,13 @@ if __name__ == '__main__':
 
     # step-wise learning
     for i in range (int(v_sampleReviewSize / v_samplePackageSize)+1):
-        start = i * v_samplePackageSize
-        end = min((i+1)*v_samplePackageSize, v_sampleReviewSize)
-        if (start == end):
+        start = jumping_point
+        end = max(((i+1)*v_samplePackageSize) - v_samplePackageSize, v_sampleReviewSize)
+        if (i*v_samplePackageSize == v_sampleReviewSize):
             break
-        samples, labels = generateSamples(jumping_point, end, metaData, worddic, sampletype)
+        #samples, labels, jumped = generateSamples(jumping_point, end, metaData, worddic, sampletype)
+        samples, labels, jumped = generateSamples(jumping_point, v_samplePackageSize, metaData, worddic, sampletype, i)
+        jumping_point += jumped
         trainClassifier(clf, np.array(samples), np.array(labels), len(worddic))
         saveClassifier(clf, str(i*v_samplePackageSize)+".nb" , v_version)
 
