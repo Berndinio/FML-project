@@ -13,7 +13,7 @@ from keras.utils import np_utils
 import tensorflow as tf
 
 # main control variables
-v_sampleReviewSize = 5000
+v_sampleReviewSize = 100
 v_feedbackFrequency = 100
 v_sequenceLength = 100
 
@@ -53,11 +53,46 @@ def dataToList(path, start, end):
             counter +=1
     return data
 
-def prepareData():
+def getDataInfo():
     # load ascii text and covert to lowercase
     print("reading review Data ...")
-    reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", 0, v_sampleReviewSize)
+    reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", 0, 836006)
 
+    raw_text = ""
+    chars = []
+    for epoch, review in enumerate(reviewsData):
+        if (epoch % v_feedbackFrequency == 0):
+            print(str(epoch)+"/"+str(836006))
+        review_text = review["reviewText"]
+        if v_manipulateTrainingRemoveNonASCII:
+            review_text = ''.join([x for x in review_text if ord(x) < 128])
+        if v_manipulateTrainingReplace:
+            for replacement in v_replaceInString:
+                review_text = review_text.replace(replacement, "")
+        if v_manipulateTrainingRemoveAdditionalWhitespaces:
+            review_text = '\n'.join(' '.join(line.split()) for line in review_text.splitlines())
+        raw_text = v_messageStart + review_text + v_messageEnd
+
+        if v_manipulateTrainingLower:
+            raw_text = raw_text.lower()
+        chars = list(set(list(set(raw_text)) + chars))
+    print("Done!")
+    # create mapping of unique chars to integers
+    chars = sorted(chars)
+    char_to_int = dict((c, i) for i, c in enumerate(chars))
+    int_to_char = dict((i, c) for i, c in enumerate(chars))
+    # summarize the loaded data
+    n_vocab = len(chars)
+    print ("Total Characters ALL: "+ str(n_vocab))
+    print(chars)
+    return n_vocab, int_to_char, char_to_int
+
+
+
+def prepareData(n_vocab, char_to_int, start):
+    # load ascii text and covert to lowercase
+    print("reading review Data ...")
+    reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", start, start+v_sampleReviewSize)
     raw_text = ""
     for epoch, review in enumerate(reviewsData):
         if (epoch % v_feedbackFrequency == 0):
@@ -71,20 +106,15 @@ def prepareData():
         if v_manipulateTrainingRemoveAdditionalWhitespaces:
             review_text = '\n'.join(' '.join(line.split()) for line in review_text.splitlines())
         raw_text = raw_text + v_messageStart + review_text + v_messageEnd
-
     if v_manipulateTrainingLower:
         raw_text = raw_text.lower()
     print("Done!")
 
     # create mapping of unique chars to integers
     chars = sorted(list(set(raw_text)))
-    char_to_int = dict((c, i) for i, c in enumerate(chars))
-    int_to_char = dict((i, c) for i, c in enumerate(chars))
     # summarize the loaded data
     n_chars = len(raw_text)
-    n_vocab = len(chars)
     print ("Total Characters: "+ str(n_chars))
-    print ("Total Vocab: " + str(n_vocab))
     # prepare the dataset of input to output pairs encoded as integers
     seq_length = v_sequenceLength
     dataX = []
@@ -102,7 +132,7 @@ def prepareData():
     X = X / float(n_vocab)
     # one hot encode the output variable
     y = np_utils.to_categorical(dataY)
-    return X, y, int_to_char, n_vocab
+    return X, y
 
 
 ##############################

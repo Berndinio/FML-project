@@ -10,11 +10,14 @@ from keras.utils import np_utils
 
 from recurrent_model import loadModel
 from recurrent_model import prepareData
+from recurrent_model import getDataInfo
 
-dataX, y, int_to_char, n_vocab = prepareData()
+
+n_vocab, int_to_char, char_to_int = getDataInfo()
+dataX, y = prepareData(n_vocab, char_to_int)
 dataX = dataX * n_vocab
 # define the LSTM model
-model = loadModel(dataX, y, "savings-LSTM/weights-improvement-19-2.7244-bigger.hdf5")
+model = loadModel(dataX, y, "savings-LSTM/weights-improvement-6-2.3895-bigger.hdf5")
 model.compile(loss='categorical_crossentropy', optimizer='adam')
 # pick a random seed
 start = numpy.random.randint(0, len(dataX)-1)
@@ -25,7 +28,7 @@ print(pattern)
 print("Seed:")
 print("\"", ''.join([int_to_char[int(value)] for value in pattern]), "\"")
 # generate characters
-for i in range(10):
+for i in range(100):
 	x = numpy.reshape(pattern, (1, len(pattern), 1))
 	x = x / float(n_vocab)
 	prediction = model.predict(x, verbose=0)

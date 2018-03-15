@@ -19,6 +19,8 @@ from keras.utils import np_utils
 import tensorflow as tf
 
 from recurrent_model import getModel
+from recurrent_model import getDataInfo
+
 from recurrent_model import prepareData
 import time
 
@@ -34,7 +36,8 @@ v_epochs = 20
 #######################
 # TRAINING LOOP
 #######################
-X, y, *rest = prepareData()
+n_vocab, int_to_char, char_to_int = getDataInfo()
+X, y = prepareData(n_vocab, char_to_int)
 
 # define the LSTM model
 model = getModel(X, y)
@@ -45,8 +48,8 @@ model.compile(loss='categorical_crossentropy', optimizer='adam')
 for i in range(v_epochs):
     filepath="savings-LSTM/weights-improvement-"+str(i)+"-{loss:.4f}-bigger.hdf5"
     checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-    checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.5))
-    callbacks_list = [checkpoint, checkpoint2]
+    #checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.5))
+    callbacks_list = [checkpoint]
     print("Fitting model in epoch: "+str(i))
     model.fit(X, y, epochs=1, batch_size=v_batchSize, callbacks=callbacks_list)
     #time.sleep(180)
