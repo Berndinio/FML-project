@@ -25,11 +25,11 @@ global listNullCats
 # how much words are viewed at during classification
 v_sequenceLength = 5
 # how many reviews should be used for training?
-v_sampleReviewSize = 1000
+v_sampleReviewSize = 50676
 # how many reviews should be trained at once? (lower if RAM is overloaded)
-v_samplePackageSize = 100
+v_samplePackageSize = 10
 # which timestamps should be saved and feedbacked?
-v_feedbackFrequency = 10
+v_feedbackFrequency = 5
 # savings folder in use
 v_version = 1
 
@@ -41,15 +41,15 @@ v_messageStart = "#beginningOfText"
 v_messageEnd = "#endOfText"
 v_chooseTrainingRatingRangeStart = 4.0
 v_chooseTrainingRatingRangeEnd = 5.0
-v_chooseTrainingWordsRangeStart = 10
-v_chooseTrainingWordsRangeEnd = 300
+v_chooseTrainingWordsRangeStart = 5
+v_chooseTrainingWordsRangeEnd = 100
 v_chooseSimpleWords = False
 v_manipulateTrainingReplace = True
 v_manipulateTrainingLower = False
 v_manipulateTrainingRemoveNonASCII = True
 v_manipulateTrainingRemoveAdditionalWhitespaces = True
 
-
+v_loadWordDic = True
 
 ### GENERATED REV VARIABLES
 v_maxReviewOutputLength = 330
@@ -86,6 +86,15 @@ def load_basic_wordlist():
     print("Basic wordlist loaded!")
     return wordlist
 
+def dataToListOld(path, start, end):
+    metaData = []
+    for counter, item in enumerate(parse(path)):
+        if (counter >= end):
+            return metaData
+        if (counter >= start):
+            metaData.append(item)
+    return metaData
+
 def dataToList(path, start, end, worddic):
     data = []
     counter = 0
@@ -100,6 +109,7 @@ def dataToList(path, start, end, worddic):
         jumped +=1
         if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
             if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
+                item["reviewText"] = manipulateText(item["reviewText"])
                 if (v_chooseSimpleWords):
                     simple = True
                     text = item["reviewText"]
@@ -115,7 +125,21 @@ def dataToList(path, start, end, worddic):
                 else:
                     final_counter +=1
                     data.append(item)
+
+    print("Completely iterated over dataset")
     return data, jumped
+
+def manipulateText(text):
+    if v_manipulateTrainingRemoveNonASCII:
+        text = ''.join([x for x in text if ord(x) < 128])
+    if v_manipulateTrainingReplace:
+        for replacement in v_replaceInString:
+            text = text.replace(replacement, "")
+    if v_manipulateTrainingRemoveAdditionalWhitespaces:
+        text = '\n'.join(' '.join(line.split()) for line in text.splitlines())
+    if v_manipulateTrainingLower:
+        text = text.lower()
+    return text
 
 def dataToDict(path):
     metaData = {}
@@ -234,14 +258,13 @@ def trainClassifier(classifier, samples, labels, worddicSize):
     classifier.partial_fit(samples, labels, range(worddicSize))
     print("Done partial training!")
 
-def generateSamples(start, end, metaData, worddic, featurelist, iteration):
+def generateSamples(reviewsData, metaData, worddic, featurelist, iteration):
     global uniqueCats
     global listNullCats
-    print("Called generate samples with jumped=" + str(start) + " and end=" + str(end))
+    print("Called generate samples with " + str(len(reviewsData)) + " reviews.")
 
     samples = []
     labels = []
-    reviewsData, jumped = dataToList("data/music/reviews_Digital_Music.json.gz", start, end, worddic)
     for epoch, review in enumerate(reviewsData):
         if (((iteration*v_samplePackageSize) +epoch) % v_feedbackFrequency == 0):
             print("samples generated:" + str(((iteration*v_samplePackageSize) +epoch))+"/"+str(v_sampleReviewSize))
@@ -249,17 +272,7 @@ def generateSamples(start, end, metaData, worddic, featurelist, iteration):
         for i in range(v_sequenceLength):
             lastwords.append(2)
         review_text = review["reviewText"]
-
-        if v_manipulateTrainingRemoveNonASCII:
-            review_text = ''.join([x for x in review_text if ord(x) < 128])
-        if v_manipulateTrainingReplace:
-            for replacement in v_replaceInString:
-                review_text = review_text.replace(replacement, "")
-        if v_manipulateTrainingRemoveAdditionalWhitespaces:
-            review_text = '\n'.join(' '.join(line.split()) for line in review_text.splitlines())
-        if v_manipulateTrainingLower:
-            review_text = review_text.lower()
-
+        #usually text manipulated here
         stars = review["overall"]
         product = review["asin"]
         name = metaData[product]["title"]
@@ -294,7 +307,7 @@ def generateSamples(start, end, metaData, worddic, featurelist, iteration):
     #print("Done!")
     samples = np.array(samples)
     labels = np.array(labels)
-    return samples, labels , jumped
+    return samples, labels
 
 #######################
 # GENERATE A REV
@@ -364,24 +377,25 @@ if __name__ == '__main__':
         listNullCats.append(0)
 
     # creating dictionary of words
-
-
-
+    print("reading review Data ...")
+    reviewsData, trash = dataToList("data/music/reviews_Digital_Music.json.gz", 0, 836006, worddic)
+    print("Dataset has length "+str(len(reviewsData)))
+    worddic = []
     if not v_chooseSimpleWords:
-        print("reading review Data ...")
-        reviewsData, trash = dataToList("data/music/reviews_Digital_Music.json.gz", jumping_point, v_sampleReviewSize+1, worddic)
-        print("Done! Choosen " + str(len(reviewsData)) + " reviews fitting criteria. Aim was " + str(v_sampleReviewSize))
-        print("creating worddic...")
-        for epoch, review in enumerate(reviewsData):
-            if (epoch % v_feedbackFrequency == 0):
-                print(str(epoch)+"/"+str(v_sampleReviewSize))
+        if not v_loadWordDic:
+            print("creating worddic...")
+            for epoch, review in enumerate(reviewsData):
+                if (epoch % v_feedbackFrequency == 0):
+                    print(str(epoch)+"/"+str(836006))
                 text = review["reviewText"]
-                for replacement in v_replaceInString:
-                    text = text.replace(replacement, "")
-                    splitted = text.split(v_splitString)
-                    for word in splitted:
-                        if word not in worddic:
-                            worddic.append(word)
+                splitted = text.split(v_splitString)
+                worddic = worddic + splitted
+                if(epoch%100 == 0):
+                    worddic = list(set(worddic))
+            saveObject(worddic, "worddic/words.nb", v_version)
+        else:
+            worddic = loadObject("worddic/words.nb", v_version)
+            print("Loaded Worddic")
         print("Done! Created worddic with size " + str(len(worddic)))
 
     # chosen Classifier
@@ -390,15 +404,14 @@ if __name__ == '__main__':
 
     # step-wise learning
     for i in range (int(v_sampleReviewSize / v_samplePackageSize)+1):
-        start = jumping_point
-        end = max(((i+1)*v_samplePackageSize) - v_samplePackageSize, v_sampleReviewSize)
-        if (i*v_samplePackageSize == v_sampleReviewSize):
+        start = i*v_samplePackageSize
+        end = min((i+1)*v_samplePackageSize, v_sampleReviewSize)
+        if (i*v_samplePackageSize >= v_sampleReviewSize):
             break
-        #samples, labels, jumped = generateSamples(jumping_point, end, metaData, worddic, sampletype)
-        samples, labels, jumped = generateSamples(jumping_point, v_samplePackageSize, metaData, worddic, sampletype, i)
-        jumping_point += jumped
+        samples, labels = generateSamples(reviewsData[start:end], metaData, worddic, sampletype, i)
         trainClassifier(clf, np.array(samples), np.array(labels), len(worddic))
-        saveClassifier(clf, str(i*v_samplePackageSize)+".nb" , v_version)
+        #saveClassifier(clf, str(i*v_samplePackageSize)+"save.nb" , v_version)
+        saveClassifier(clf, "save.nb" , v_version)
 
 
     print("generating test review...")
