@@ -23,9 +23,9 @@ global listNullCats
 ### MAIN VARIABLES
 
 # how much words are viewed at during classification
-v_sequenceLength = 5
+v_sequenceLength = 30
 # how many reviews should be used for training?
-v_sampleReviewSize = 50676
+v_sampleReviewSize = 999999999999
 # how many reviews should be trained at once? (lower if RAM is overloaded)
 v_samplePackageSize = 10
 # which timestamps should be saved and feedbacked?
@@ -39,10 +39,10 @@ v_replaceInString = ["&quot;", "\"", "(", ")", ";"]
 v_learningAlgorithm = "" #not implemented yet
 v_messageStart = "#beginningOfText"
 v_messageEnd = "#endOfText"
-v_chooseTrainingRatingRangeStart = 4.0
+v_chooseTrainingRatingRangeStart = 5.0
 v_chooseTrainingRatingRangeEnd = 5.0
-v_chooseTrainingWordsRangeStart = 5
-v_chooseTrainingWordsRangeEnd = 100
+v_chooseTrainingWordsRangeStart = 2
+v_chooseTrainingWordsRangeEnd = 15
 v_chooseSimpleWords = False
 v_manipulateTrainingReplace = True
 v_manipulateTrainingLower = False
@@ -155,16 +155,18 @@ def getUniqueCategories(metaData):
     output = set([])
     for key in metaData.keys():
         item = metaData[key]
-        for it1 in item["categories"]:
-            for it2 in it1:
-                output.add(it2)
+        if "categories" in item.keys():
+            for it1 in item["categories"]:
+                for it2 in it1:
+                    output.add(it2)
     return sorted(list(output))
 
 def getUniqueCategoriesSingle(item):
     output = set([])
-    for it1 in item["categories"]:
-        for it2 in it1:
-            output.add(it2)
+    if "categories" in item.keys():
+        for it1 in item["categories"]:
+            for it2 in it1:
+                output.add(it2)
     return sorted(list(output))
 
 def getUniqueBrandNames(metaData):
@@ -271,10 +273,16 @@ def generateSamples(reviewsData, metaData, worddic, featurelist, iteration):
         lastwords = []
         for i in range(v_sequenceLength):
             lastwords.append(2)
+
+        if not all(k in review.keys() for k in ["reviewText", "overall"]):
+            continue
         review_text = review["reviewText"]
         #usually text manipulated here
         stars = review["overall"]
         product = review["asin"]
+
+        if not all(k in metaData[product].keys() for k in ["title", "price"]):
+            continue
         name = metaData[product]["title"]
         price = metaData[product]["price"]
         categories = getUniqueCategoriesSingle(metaData[review["asin"]])
@@ -322,11 +330,13 @@ def generateReview(classifier, product, featurelist, worddictionary, randomness=
     for i in range(v_sequenceLength):
         lastwords.append(2)
 
+    if not all(k in product.keys() for k in ["categories", "overall", "price", "title"]):
+        return "This is an error text...no really...there was a key missing."
     #extracting product features
     categories = product["categories"]
-    stars = product["stars"]
+    stars = product["overall"]
     price = product["price"]
-    name = product["name"]
+    name = product["title"]
 
     #generate categories vector
     catFeatures = deepcopy(listNullCats)
@@ -402,20 +412,27 @@ if __name__ == '__main__':
     clf = generateClassifier()
     sampletype = [v_activateCategories, v_activateRating, v_activateName, v_activatePrice, v_activateWordcount]
 
-    # step-wise learning
-    for i in range (int(v_sampleReviewSize / v_samplePackageSize)+1):
-        start = i*v_samplePackageSize
-        end = min((i+1)*v_samplePackageSize, v_sampleReviewSize)
-        if (i*v_samplePackageSize >= v_sampleReviewSize):
-            break
-        samples, labels = generateSamples(reviewsData[start:end], metaData, worddic, sampletype, i)
-        trainClassifier(clf, np.array(samples), np.array(labels), len(worddic))
-        #saveClassifier(clf, str(i*v_samplePackageSize)+"save.nb" , v_version)
-        saveClassifier(clf, "save.nb" , v_version)
+    if(True):
+        # step-wise learning
+        for i in range (int(v_sampleReviewSize / v_samplePackageSize)+1):
+            start = i*v_samplePackageSize
+            end = min((i+1)*v_samplePackageSize, v_sampleReviewSize)
+            if (i*v_samplePackageSize >= v_sampleReviewSize):
+                break
+            samples, labels = generateSamples(reviewsData[start:end], metaData, worddic, sampletype, i)
+            trainClassifier(clf, np.array(samples), np.array(labels), len(worddic))
+            #saveClassifier(clf, str(i*v_samplePackageSize)+"save.nb" , v_version)
+            saveClassifier(clf, "save.nb" , v_version)
 
 
+
+    #clf = loadClassifier("save.nb", v_version)
     print("generating test review...")
-    review_product = {"categories":[uniqueCats[0]], "price":9.99, "stars":3.0, "name":"Ulala"}
+    review_product = {"categories":[uniqueCats[0]], "price":9.99, "stars":4.0, "name":"Ulala"}
+    review_product = metaData[reviewsData[0]["asin"]]
+    review_product["overall"] = reviewsData[0]["overall"]
+    review_product["categories"] = getUniqueCategoriesSingle(review_product)
+    #classifier, product, featurelist, worddictionary, randomness=False
     review_text = generateReview(clf, review_product, sampletype, worddic, False)
     text = " ".join(review_text)
     print("Done! The review is following:")
