@@ -23,9 +23,9 @@ global listNullCats
 ### MAIN VARIABLES
 
 # how much words are viewed at during classification
-v_sequenceLength = 30
+v_sequenceLength = 3
 # how many reviews should be used for training?
-v_sampleReviewSize = 999999999999
+v_sampleReviewSize = 257527
 # how many reviews should be trained at once? (lower if RAM is overloaded)
 v_samplePackageSize = 10
 # which timestamps should be saved and feedbacked?
@@ -41,8 +41,8 @@ v_messageStart = "#beginningOfText"
 v_messageEnd = "#endOfText"
 v_chooseTrainingRatingRangeStart = 5.0
 v_chooseTrainingRatingRangeEnd = 5.0
-v_chooseTrainingWordsRangeStart = 2
-v_chooseTrainingWordsRangeEnd = 15
+v_chooseTrainingWordsRangeStart = 1
+v_chooseTrainingWordsRangeEnd = 150
 v_chooseSimpleWords = False
 v_manipulateTrainingReplace = True
 v_manipulateTrainingLower = False
@@ -274,17 +274,32 @@ def generateSamples(reviewsData, metaData, worddic, featurelist, iteration):
         for i in range(v_sequenceLength):
             lastwords.append(2)
 
-        if not all(k in review.keys() for k in ["reviewText", "overall"]):
-            continue
-        review_text = review["reviewText"]
+        if not "reviewText" in review.keys():
+            print("'ReviewText' missing")
+            review_text = ""
+        else:
+            review_text = review["reviewText"]
+
+        if not "overall" in review.keys():
+            print("'Overall' missing")
+            stars = 0.0
+        else:
+            stars = review["overall"]
         #usually text manipulated here
-        stars = review["overall"]
         product = review["asin"]
 
-        if not all(k in metaData[product].keys() for k in ["title", "price"]):
-            continue
-        name = metaData[product]["title"]
-        price = metaData[product]["price"]
+        if not "title" in metaData[product].keys():
+            print("'Title' missing")
+            name = ""
+        else:
+            name = metaData[product]["title"]
+
+        if not "price" in metaData[product].keys():
+            print("'Price' missing")
+            price = 0.0
+        else:
+            price = metaData[product]["price"]
+
         categories = getUniqueCategoriesSingle(metaData[review["asin"]])
         splitted = review_text.split(" ")
         splitted.insert(0, "#None")
@@ -420,7 +435,10 @@ if __name__ == '__main__':
             if (i*v_samplePackageSize >= v_sampleReviewSize):
                 break
             samples, labels = generateSamples(reviewsData[start:end], metaData, worddic, sampletype, i)
-            trainClassifier(clf, np.array(samples), np.array(labels), len(worddic))
+            try:
+                trainClassifier(clf, np.array(samples), np.array(labels), len(worddic))
+            except:
+                print("We got an error while partial fit and ignored it.")
             #saveClassifier(clf, str(i*v_samplePackageSize)+"save.nb" , v_version)
             saveClassifier(clf, "save.nb" , v_version)
 
