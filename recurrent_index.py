@@ -22,6 +22,7 @@ from recurrent_model import getModel
 from recurrent_model import getDataInfo
 
 from recurrent_model import prepareData
+from recurrent_model import generate_batch_by_batch_data
 import time
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
@@ -32,24 +33,29 @@ sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 #######################
 v_batchSize = 256
 v_epochs = 20
+v_batchesPerEpoch = 1000
 
 #######################
 # TRAINING LOOP
 #######################
 n_vocab, int_to_char, char_to_int = getDataInfo()
-X, y = prepareData(n_vocab, char_to_int)
+init_generator = generate_batch_by_batch_data(n_vocab, char_to_int, v_batchSize)
+X, y = next(init_generator)
 
 # define the LSTM model
 model = getModel(X, y)
 model.compile(loss='categorical_crossentropy', optimizer='adam')
 # define the checkpoint
-
+filepath="savings-LSTM/weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
+#checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.5))
+callbacks_list = [checkpoint]
+generator = generate_batch_by_batch_data(n_vocab, char_to_int, v_batchSize)
 # fit the model
 for i in range(v_epochs):
-    filepath="savings-LSTM/weights-improvement-"+str(i)+"-{loss:.4f}-bigger.hdf5"
-    checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-    #checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.5))
-    callbacks_list = [checkpoint]
-    print("Fitting model in epoch: "+str(i))
-    model.fit(X, y, epochs=1, batch_size=v_batchSize, callbacks=callbacks_list)
+    print("Fitting model in epoch: "+str(i+1))
+    if (i > 0):
+        model.fit_generator(generator, steps_per_epoch=v_batchesPerEpoch, epochs=i+1, batch_size=v_batchSize, callbacks=callbacks_list, initial_epoch = i)
+    else:
+        model.fit_generator(generator, steps_per_epoch=v_batchesPerEpoch, epochs=1, batch_size=v_batchSize, callbacks=callbacks_list)
     #time.sleep(180)

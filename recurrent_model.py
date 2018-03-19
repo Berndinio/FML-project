@@ -14,6 +14,7 @@ import tensorflow as tf
 
 # main control variables
 v_sampleReviewSize = 100
+v_samplePackageSize = 100 
 v_feedbackFrequency = 100
 v_sequenceLength = 100
 
@@ -22,6 +23,8 @@ v_messageStart = chr(2)
 v_messageEnd = chr(3)
 v_chooseTrainingRatingRangeStart = 4.0
 v_chooseTrainingRatingRangeEnd = 5.0
+v_chooseTrainingWordsRangeStart = 10
+v_chooseTrainingWordsRangeEnd = 320
 v_replaceInString = ["&quot;", "\""]
 v_manipulateTrainingReplace = True
 v_manipulateTrainingLower = False
@@ -44,13 +47,13 @@ def parse(path):
 
 def dataToList(path, start, end):
     data = []
-    counter = 0
-    for item in parse(path):
-        if (counter >= end):
+    for i, item in enumerate(parse(path)):
+        if (i >= end):
             return data
-        if (counter >= start) and (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
-            data.append(item)
-            counter +=1
+        if (counter >= start):
+            if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
+                if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
+                    data.append(item)
     return data
 
 def getDataInfo():
@@ -89,10 +92,12 @@ def getDataInfo():
 
 
 
-def prepareData(n_vocab, char_to_int, start):
+def prepareData(n_vocab, char_to_int, cycle):
     # load ascii text and covert to lowercase
     print("reading review Data ...")
-    reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", start, start+v_sampleReviewSize)
+    start = cycle * v_samplePackageSize
+    end = min((cycle+1)*v_samplePackageSize, v_sampleReviewSize)
+    reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", start, end)
     raw_text = ""
     for epoch, review in enumerate(reviewsData):
         if (epoch % v_feedbackFrequency == 0):
@@ -134,6 +139,51 @@ def prepareData(n_vocab, char_to_int, start):
     y = np_utils.to_categorical(dataY)
     return X, y
 
+def generate_batch_by_batch_data(n_vocab, char_to_int, batch_size):
+    # load ascii text and covert to lowercase
+    #print("reading review Data ...")
+    reading_point = 0
+    text = ""
+    while(reading_point <= v_sampleReviewSize):
+        end = min(reading_point + v_samplePackageSize, v_sampleReviewSize)
+        reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", reading_point, end)
+        for epoch in range(reading_point, end):
+            if (epoch % v_feedbackFrequency == 0):
+                print(str(epoch)+"/"+str(v_sampleReviewSize))
+        reading_point = end
+        raw_text = ""
+        for review in reviewsData:
+            review_text = review["reviewText"]
+            if v_manipulateTrainingRemoveNonASCII:
+                review_text = ''.join([x for x in review_text if ord(x) < 128])
+            if v_manipulateTrainingReplace:
+                for replacement in v_replaceInString:
+                    review_text = review_text.replace(replacement, "")
+            if v_manipulateTrainingRemoveAdditionalWhitespaces:
+                review_text = '\n'.join(' '.join(line.split()) for line in review_text.splitlines())
+            raw_text = raw_text + v_messageStart + review_text + v_messageEnd
+        if v_manipulateTrainingLower:
+            raw_text = raw_text.lower()
+        text = text + raw_text
+        seq_length = v_sequenceLength
+        if (len(text) <= batch_size + seq_length):
+            continue
+        dataX = []
+        dataY = []
+        for j in range(int(len(text)/batch_size)):
+            for i in range(0, batch_size, 1):
+                seq_in = text[i:i + seq_length]
+    	        seq_out = text[i + seq_length]
+    	        dataX.append([char_to_int[char] for char in seq_in])
+    	        dataY.append(char_to_int[seq_out])
+            n_patterns = len(dataX)
+            # reshape X to be [samples, time steps, features]
+            X = numpy.reshape(dataX, (n_patterns, seq_length, 1))
+            # normalize
+            X = X / float(n_vocab)
+            # one hot encode the output variable
+            y = np_utils.to_categorical(dataY)
+            yield X, y
 
 ##############################
 # MODEL FUNCTIONS
