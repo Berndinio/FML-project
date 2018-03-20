@@ -3,3 +3,4 @@ data/*
 *.pyc
 savings/*
 *.hdf5
+CIP-Pool/*
