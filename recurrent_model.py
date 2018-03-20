@@ -13,9 +13,9 @@ from keras.utils import np_utils
 import tensorflow as tf
 
 # main control variables
-v_sampleReviewSize = 100
-v_samplePackageSize = 100 
-v_feedbackFrequency = 100
+v_sampleReviewSize = 836006
+v_samplePackageSize = 10
+v_feedbackFrequency = 10000
 v_sequenceLength = 100
 
 # text manipulation variables
@@ -50,7 +50,7 @@ def dataToList(path, start, end):
     for i, item in enumerate(parse(path)):
         if (i >= end):
             return data
-        if (counter >= start):
+        if (i >= start):
             if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
                 if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
                     data.append(item)
@@ -60,12 +60,12 @@ def getDataInfo():
     # load ascii text and covert to lowercase
     print("reading review Data ...")
     reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", 0, 836006)
-
     raw_text = ""
     chars = []
+    total_length = 0
     for epoch, review in enumerate(reviewsData):
         if (epoch % v_feedbackFrequency == 0):
-            print(str(epoch)+"/"+str(836006))
+            print("Reviews read: " + str(epoch))
         review_text = review["reviewText"]
         if v_manipulateTrainingRemoveNonASCII:
             review_text = ''.join([x for x in review_text if ord(x) < 128])
@@ -75,10 +75,10 @@ def getDataInfo():
         if v_manipulateTrainingRemoveAdditionalWhitespaces:
             review_text = '\n'.join(' '.join(line.split()) for line in review_text.splitlines())
         raw_text = v_messageStart + review_text + v_messageEnd
-
         if v_manipulateTrainingLower:
             raw_text = raw_text.lower()
         chars = list(set(list(set(raw_text)) + chars))
+        total_length = total_length + len(raw_text)
     print("Done!")
     # create mapping of unique chars to integers
     chars = sorted(chars)
@@ -88,7 +88,7 @@ def getDataInfo():
     n_vocab = len(chars)
     print ("Total Characters ALL: "+ str(n_vocab))
     print(chars)
-    return n_vocab, int_to_char, char_to_int
+    return n_vocab, int_to_char, char_to_int, chars, total_length
 
 
 
@@ -125,10 +125,10 @@ def prepareData(n_vocab, char_to_int, cycle):
     dataX = []
     dataY = []
     for i in range(0, n_chars - seq_length, 1):
-    	seq_in = raw_text[i:i + seq_length]
-    	seq_out = raw_text[i + seq_length]
-    	dataX.append([char_to_int[char] for char in seq_in])
-    	dataY.append(char_to_int[seq_out])
+        seq_in = raw_text[i:i + seq_length]
+        seq_out = raw_text[i + seq_length]
+        dataX.append([char_to_int[char] for char in seq_in])
+        dataY.append(char_to_int[seq_out])
     n_patterns = len(dataX)
     print ("Total Patterns: " + str(n_patterns))
     # reshape X to be [samples, time steps, features]
@@ -143,13 +143,15 @@ def generate_batch_by_batch_data(n_vocab, char_to_int, batch_size):
     # load ascii text and covert to lowercase
     #print("reading review Data ...")
     reading_point = 0
+    seq_length = v_sequenceLength
     text = ""
-    while(reading_point <= v_sampleReviewSize):
+    while(reading_point < v_sampleReviewSize):
         end = min(reading_point + v_samplePackageSize, v_sampleReviewSize)
+        #print("\n Reading reviewData start: "+str(reading_point)+" end: "+str(end))
         reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", reading_point, end)
         for epoch in range(reading_point, end):
             if (epoch % v_feedbackFrequency == 0):
-                print(str(epoch)+"/"+str(v_sampleReviewSize))
+                print(" - reviews read: " + str(epoch))
         reading_point = end
         raw_text = ""
         for review in reviewsData:
@@ -165,24 +167,26 @@ def generate_batch_by_batch_data(n_vocab, char_to_int, batch_size):
         if v_manipulateTrainingLower:
             raw_text = raw_text.lower()
         text = text + raw_text
-        seq_length = v_sequenceLength
-        if (len(text) <= batch_size + seq_length):
-            continue
-        dataX = []
-        dataY = []
-        for j in range(int(len(text)/batch_size)):
+        #print("adding text: " + raw_text)
+        while (len(text) > batch_size + seq_length):
+            #print("total text size:" + str(len(text)))
+            dataX = []
+            dataY = []
             for i in range(0, batch_size, 1):
                 seq_in = text[i:i + seq_length]
-    	        seq_out = text[i + seq_length]
-    	        dataX.append([char_to_int[char] for char in seq_in])
-    	        dataY.append(char_to_int[seq_out])
+                seq_out = text[i + seq_length]
+                dataX.append([char_to_int[char] for char in seq_in])
+                dataY.append(char_to_int[seq_out])
             n_patterns = len(dataX)
             # reshape X to be [samples, time steps, features]
             X = numpy.reshape(dataX, (n_patterns, seq_length, 1))
             # normalize
             X = X / float(n_vocab)
             # one hot encode the output variable
-            y = np_utils.to_categorical(dataY)
+            y = np_utils.to_categorical(dataY, num_classes=n_vocab)
+            text = text[batch_size:]
+            #print("returning batch X with size "+str(numpy.shape(X)))
+            #print("returning batch y with size "+str(numpy.shape(y)))
             yield X, y
 
 ##############################
