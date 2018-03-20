@@ -1,0 +1,15 @@
+
+
+Quellen:
+
+[1]: https://arxiv.org/pdf/1708.08151.pdf
+    (paper über gezielte gnerierte reviews am Beispiel von yelp)
+[2]: https://machinelearningmastery.com/text-generation-lstm-recurrent-neural-networks-python-keras/
+    (Anleitung zur Texterzeugung via RNN, benutzt: Keras)
+[3]: https://keras.io/
+    (Tool zur Erstellung und Umgang mit RNN)
+[4]:https://www.tensorflow.org/
+    (open source machine learning platform)
+[5]: http://jmcauley.ucsd.edu/data/amazon/
+    (Trainingsdaten bzgl. Amazon reviews)
+[6]:
