@@ -60,12 +60,12 @@ def getDataInfo():
     # load ascii text and covert to lowercase
     print("reading review Data ...")
     reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", 0, 836006)
-
     raw_text = ""
     chars = []
+    total_length = 0
     for epoch, review in enumerate(reviewsData):
         if (epoch % v_feedbackFrequency == 0):
-            print(" - reviews read" str(epoch))
+            print("Reviews read: " + str(epoch))
         review_text = review["reviewText"]
         if v_manipulateTrainingRemoveNonASCII:
             review_text = ''.join([x for x in review_text if ord(x) < 128])
@@ -78,6 +78,7 @@ def getDataInfo():
         if v_manipulateTrainingLower:
             raw_text = raw_text.lower()
         chars = list(set(list(set(raw_text)) + chars))
+        total_length = total_length + len(raw_text)
     print("Done!")
     # create mapping of unique chars to integers
     chars = sorted(chars)
@@ -87,7 +88,7 @@ def getDataInfo():
     n_vocab = len(chars)
     print ("Total Characters ALL: "+ str(n_vocab))
     print(chars)
-    return n_vocab, int_to_char, char_to_int
+    return n_vocab, int_to_char, char_to_int, chars, total_length
 
 
 
@@ -150,7 +151,7 @@ def generate_batch_by_batch_data(n_vocab, char_to_int, batch_size):
         reviewsData = dataToList("data/music/reviews_Digital_Music.json.gz", reading_point, end)
         for epoch in range(reading_point, end):
             if (epoch % v_feedbackFrequency == 0):
-                print(str(epoch)+"/"+str(v_sampleReviewSize))
+                print(" - reviews read: " + str(epoch))
         reading_point = end
         raw_text = ""
         for review in reviewsData:
