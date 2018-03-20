@@ -14,7 +14,7 @@ import tensorflow as tf
 
 # main control variables
 v_sampleReviewSize = 100
-v_samplePackageSize = 100 
+v_samplePackageSize = 100
 v_feedbackFrequency = 100
 v_sequenceLength = 100
 
@@ -166,11 +166,9 @@ def generate_batch_by_batch_data(n_vocab, char_to_int, batch_size):
             raw_text = raw_text.lower()
         text = text + raw_text
         seq_length = v_sequenceLength
-        if (len(text) <= batch_size + seq_length):
-            continue
-        dataX = []
-        dataY = []
-        for j in range(int(len(text)/batch_size)):
+        while (len(text) <= batch_size + seq_length):
+            dataX = []
+            dataY = []
             for i in range(0, batch_size, 1):
                 seq_in = text[i:i + seq_length]
     	        seq_out = text[i + seq_length]
@@ -183,6 +181,7 @@ def generate_batch_by_batch_data(n_vocab, char_to_int, batch_size):
             X = X / float(n_vocab)
             # one hot encode the output variable
             y = np_utils.to_categorical(dataY)
+            text = [batch_size:]
             yield X, y
 
 ##############################
