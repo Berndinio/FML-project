@@ -45,7 +45,7 @@ print("Software v_textlength="+str(v_textlength))
 # SOME VARIABLES
 #######################
 v_batchSize = 256
-v_epochs = 20
+v_epochs = 0
 v_batchesPerEpoch = min(5000, int(v_textlength/v_batchSize))
 
 #######################

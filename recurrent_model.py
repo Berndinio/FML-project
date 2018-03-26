@@ -23,7 +23,7 @@ v_messageStart = chr(2)
 v_messageEnd = chr(3)
 v_chooseTrainingRatingRangeStart = 1.0
 v_chooseTrainingRatingRangeEnd = 2.0
-v_chooseTrainingHelpfulRangeStart = 0.5
+v_chooseTrainingHelpfulRangeStart = 0.0
 v_chooseTrainingHelpfulRangeEnd = 1.0
 v_minTrainingHelpful = 3.0
 v_chooseTrainingWordsRangeStart = 20
@@ -56,7 +56,7 @@ def dataToList(path, start, end):
         if (i >= start):
             if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
                 if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
-                    if(item["helpful"][1]):
+                    if(item["helpful"][1] == 0):
                         frac = 0
                     else:
                         frac = item["helpful"][0]/item["helpful"][1]
