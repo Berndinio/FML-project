@@ -25,7 +25,7 @@ v_chooseTrainingRatingRangeStart = 1.0
 v_chooseTrainingRatingRangeEnd = 2.0
 v_chooseTrainingHelpfulRangeStart = 0.0
 v_chooseTrainingHelpfulRangeEnd = 1.0
-v_minTrainingHelpful = 3.0
+v_minTrainingHelpful = 0.0
 v_chooseTrainingWordsRangeStart = 20
 v_chooseTrainingWordsRangeEnd = 320
 v_replaceInString = ["&quot;", "\""]
@@ -56,12 +56,7 @@ def dataToList(path, start, end):
         if (i >= start):
             if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
                 if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
-                    if(item["helpful"][1] == 0):
-                        frac = 0
-                    else:
-                        frac = item["helpful"][0]/item["helpful"][1]
-                    if(v_minTrainingHelpful <= item["helpful"][1] and v_chooseTrainingHelpfulRangeStart <= frac and v_chooseTrainingHelpfulRangeEnd >= frac):
-                        data.append(item)
+                    data.append(item)
     return data
 
 def getDataInfo():

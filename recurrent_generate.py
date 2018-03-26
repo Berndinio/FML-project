@@ -17,7 +17,7 @@ def generateReviews(path, num):
 	dataX, y = prepareData(n_vocab, char_to_int, 0)
 	dataX = dataX * n_vocab
 	# define the LSTM model
-	model = loadModel(dataX, numpy.reshape(numpy.array(chars), (1,96)), path)
+	model = loadModel(dataX, numpy.reshape(numpy.array(chars), (1,numpy.shape(chars)[0])), path)
 	model.compile(loss='categorical_crossentropy', optimizer='adam')
 	# pick a random seed
 	allReviews = ""
