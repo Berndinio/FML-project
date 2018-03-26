@@ -16,7 +16,7 @@ import tensorflow as tf
 v_sampleReviewSize = 836006
 v_samplePackageSize = 1000
 v_feedbackFrequency = 10000
-v_sequenceLength = 100
+v_sequenceLength = 20
 
 # text manipulation variables
 v_messageStart = chr(2)
