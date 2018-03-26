@@ -46,7 +46,7 @@ print("Software v_textlength="+str(v_textlength))
 #######################
 v_batchSize = 256
 v_epochs = 20
-v_batchesPerEpoch = min(5000, int(v_textlength/v_batchSize))
+v_batchesPerEpoch = min(7500, int(v_textlength/v_batchSize))
 
 #######################
 # TRAINING LOOP
@@ -64,7 +64,7 @@ model.compile(loss='categorical_crossentropy', optimizer='adam')
 filepath="savings-LSTM2/weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
 print("getting checkpoint")
 checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.1))
+checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.5))
 callbacks_list = [checkpoint, checkpoint2]
 print("generate_batch_by_batch_data second call")
 

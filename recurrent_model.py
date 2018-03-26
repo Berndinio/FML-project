@@ -16,17 +16,17 @@ import tensorflow as tf
 v_sampleReviewSize = 836006
 v_samplePackageSize = 1000
 v_feedbackFrequency = 10000
-v_sequenceLength = 20
+v_sequenceLength = 50
 
 # text manipulation variables
 v_messageStart = chr(2)
 v_messageEnd = chr(3)
-v_chooseTrainingRatingRangeStart = 1.0
-v_chooseTrainingRatingRangeEnd = 2.0
-v_chooseTrainingHelpfulRangeStart = 0.0
+v_chooseTrainingRatingRangeStart = 3.0
+v_chooseTrainingRatingRangeEnd = 5.0
+v_chooseTrainingHelpfulRangeStart = 0.5
 v_chooseTrainingHelpfulRangeEnd = 1.0
-v_minTrainingHelpful = 0.0
-v_chooseTrainingWordsRangeStart = 20
+v_minTrainingHelpful = 3.0
+v_chooseTrainingWordsRangeStart = 10
 v_chooseTrainingWordsRangeEnd = 320
 v_replaceInString = ["&quot;", "\""]
 v_manipulateTrainingReplace = True
