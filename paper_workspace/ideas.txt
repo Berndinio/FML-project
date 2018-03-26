@@ -1,5 +1,4 @@
 
-
 Quellen:
 
 [1]: https://arxiv.org/pdf/1708.08151.pdf
@@ -12,4 +11,9 @@ Quellen:
     (open source machine learning platform)
 [5]: http://jmcauley.ucsd.edu/data/amazon/
     (Trainingsdaten bzgl. Amazon reviews)
-[6]:
+[6]: https://github.com/burliEnterprises/tensorflow-shakespeare-poem-generator
+    (RNN das rein auf TensorFlow läuft, im original werden Shakespeare Werke eingelesen)
+[7]: https://www.researchgate.net/post/How_can_I_extract_features_from_text_data
+    (Forumseintrag, keine offizielle Quelle, Ideen zur Feature extraction bei Texterzeugung)
+[8]: http://scikit-learn.org/stable/modules/feature_extraction.html
+    (sci Module für feature extraction, insbesondere auch bei Textverarbeitung)
