@@ -56,7 +56,12 @@ def dataToList(path, start, end):
         if (i >= start):
             if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
                 if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
-                    data.append(item)
+                    if(item["helpful"][1] == 0):
+                        frac = 0
+                    else:
+                        frac = item["helpful"][0]/item["helpful"][1]
+                    if(v_minTrainingHelpful <= item["helpful"][1] and v_chooseTrainingHelpfulRangeStart <= frac and v_chooseTrainingHelpfulRangeEnd >= frac):
+                        data.append(item)
     return data
 
 def getDataInfo():

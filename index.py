@@ -41,6 +41,9 @@ v_messageStart = "#beginningOfText"
 v_messageEnd = "#endOfText"
 v_chooseTrainingRatingRangeStart = 5.0
 v_chooseTrainingRatingRangeEnd = 5.0
+v_chooseTrainingHelpfulRangeStart = 0.0
+v_chooseTrainingHelpfulRangeEnd = 1.0
+v_minTrainingHelpful = 0.0
 v_chooseTrainingWordsRangeStart = 1
 v_chooseTrainingWordsRangeEnd = 150
 v_chooseSimpleWords = False
@@ -110,21 +113,26 @@ def dataToList(path, start, end, worddic):
         if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
             if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
                 item["reviewText"] = manipulateText(item["reviewText"])
-                if (v_chooseSimpleWords):
-                    simple = True
-                    text = item["reviewText"]
-                    splitted = text.split(" ")
-                    for word in splitted:
-                        word = word.lower()
-                        if (word not in worddic) and (word not in v_replaceInString):
-                            simple = False
-                            break
-                    if simple:
+                if(item["helpful"][1] == 0):
+                    frac = 0
+                else:
+                    frac = item["helpful"][0]/item["helpful"][1]
+                if(v_minTrainingHelpful <= item["helpful"][1] and v_chooseTrainingHelpfulRangeStart <= frac and v_chooseTrainingHelpfulRangeEnd >= frac):
+                    if (v_chooseSimpleWords):
+                        simple = True
+                        text = item["reviewText"]
+                        splitted = text.split(" ")
+                        for word in splitted:
+                            word = word.lower()
+                            if (word not in worddic) and (word not in v_replaceInString):
+                                simple = False
+                                break
+                        if simple:
+                            final_counter +=1
+                            data.append(item)
+                    else:
                         final_counter +=1
                         data.append(item)
-                else:
-                    final_counter +=1
-                    data.append(item)
 
     print("Completely iterated over dataset")
     return data, jumped
