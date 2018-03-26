@@ -14,16 +14,19 @@ import tensorflow as tf
 
 # main control variables
 v_sampleReviewSize = 836006
-v_samplePackageSize = 10
+v_samplePackageSize = 1000
 v_feedbackFrequency = 10000
 v_sequenceLength = 100
 
 # text manipulation variables
 v_messageStart = chr(2)
 v_messageEnd = chr(3)
-v_chooseTrainingRatingRangeStart = 4.0
-v_chooseTrainingRatingRangeEnd = 5.0
-v_chooseTrainingWordsRangeStart = 10
+v_chooseTrainingRatingRangeStart = 1.0
+v_chooseTrainingRatingRangeEnd = 2.0
+v_chooseTrainingHelpfulRangeStart = 0.5
+v_chooseTrainingHelpfulRangeEnd = 1.0
+v_minTrainingHelpful = 3.0
+v_chooseTrainingWordsRangeStart = 20
 v_chooseTrainingWordsRangeEnd = 320
 v_replaceInString = ["&quot;", "\""]
 v_manipulateTrainingReplace = True
@@ -53,7 +56,12 @@ def dataToList(path, start, end):
         if (i >= start):
             if (item["overall"] >= v_chooseTrainingRatingRangeStart) and (item["overall"] <= v_chooseTrainingRatingRangeEnd):
                 if (len(item["reviewText"]) >= v_chooseTrainingWordsRangeStart) and (len(item["reviewText"]) <= v_chooseTrainingWordsRangeEnd):
-                    data.append(item)
+                    if(item["helpful"][1]):
+                        frac = 0
+                    else:
+                        frac = item["helpful"][0]/item["helpful"][1]
+                    if(v_minTrainingHelpful <= item["helpful"][1] and v_chooseTrainingHelpfulRangeStart <= frac and v_chooseTrainingHelpfulRangeEnd >= frac):
+                        data.append(item)
     return data
 
 def getDataInfo():

@@ -23,6 +23,7 @@ from recurrent_model import getDataInfo
 from recurrent_model import parse
 from recurrent_model import getDataInfo
 from recurrent_model import generate_batch_by_batch_data
+from recurrent_generate import generateReviews
 import time
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.7)
@@ -60,10 +61,10 @@ print("Getting the model")
 model = getModel(X, y)
 model.compile(loss='categorical_crossentropy', optimizer='adam')
 # define the checkpoint
-filepath="savings-LSTM/weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+filepath="savings-LSTM2/weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
 print("getting checkpoint")
 checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.5))
+checkpoint2 = LambdaCallback(on_batch_begin=lambda batch,logs: time.sleep(0.1))
 callbacks_list = [checkpoint, checkpoint2]
 print("generate_batch_by_batch_data second call")
 
@@ -76,3 +77,11 @@ for i in range(v_epochs):
     else:
         model.fit_generator(generator, steps_per_epoch=v_batchesPerEpoch, epochs=1, callbacks=callbacks_list)
     #time.sleep(180)
+
+for root, dirs, files in os.walk("savings-LSTM2/"):
+    for filename in files:
+        print("Generating reviews for '"+filename+"'")
+        reviews = generateReviews("savings-LSTM2/"+filename, 10)
+        f = open("/home/berndinio/Dropbox/FuML-own/Data/generatedReviews-LSTM2/"+filename, 'w+')
+        f.write(reviews)
+        f.close()
