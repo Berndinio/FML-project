@@ -12,7 +12,7 @@ import numpy as np
 import os.path
 import pickle
 import os
-
+import scipy
 
 global uniqueCats
 global listNullCats
@@ -27,7 +27,7 @@ v_sequenceLength = 5
 # how many reviews should be used for training?
 v_sampleReviewSize = 16500
 # how many reviews should be trained at once? (lower if RAM is overloaded)
-v_samplePackageSize = 10
+v_samplePackageSize = 1
 # which timestamps should be saved and feedbacked?
 v_feedbackFrequency = 5
 # savings folder in use
@@ -248,19 +248,23 @@ def generateFeatures(featurelist, lastwords, catFeatures, stars, price, name, co
     price_is_active = featurelist[3]
     wordcount_is_active = featurelist[4]
 
-    sample = []
+    sample = scipy.sparse.csr_matrix((1,1))
     if categories_is_active:
-        sample.extend(catFeatures)
+        sample = scipy.sparse.hstack([sample, catFeatures])
     if rating_is_active:
-        sample.append(stars)
+        mat = scipy.sparse.csr_matrix([[stars]])
+        sample = scipy.sparse.hstack([sample, mat])
     if title_is_active:
         pass
     if price_is_active:
         price = int(price/10)
-        sample.append(price)
+        mat = scipy.sparse.csr_matrix([[price]])
+        sample = scipy.sparse.hstack([sample, mat])
     if wordcount_is_active:
-        sample.append(counter)
-    sample.extend(lastwords)
+        mat = scipy.sparse.csr_matrix([[counter]])
+        sample = scipy.sparse.hstack([sample, mat])
+    mat = scipy.sparse.csr_matrix([lastwords])
+    sample = scipy.sparse.hstack([sample, mat])
     return sample
 
 def trainClassifier(classifier, samples, labels, worddicSize):
@@ -273,7 +277,7 @@ def generateSamples(reviewsData, metaData, worddic, featurelist, iteration):
     global listNullCats
     print("Called generate samples with " + str(len(reviewsData)) + " reviews.")
 
-    samples = []
+    samples = None
     labels = []
     for epoch, review in enumerate(reviewsData):
         if (((iteration*v_samplePackageSize) +epoch) % v_feedbackFrequency == 0):
@@ -322,7 +326,7 @@ def generateSamples(reviewsData, metaData, worddic, featurelist, iteration):
             catFeatures = deepcopy(listNullCats)
             for cat in categories:
                 idx = uniqueCats.index(cat)
-                catFeatures[idx] = 1.0
+                catFeatures[0,idx] = 1.0
 
             #concat our features to one vector
             if(i==len(splitted)-1):
@@ -334,9 +338,12 @@ def generateSamples(reviewsData, metaData, worddic, featurelist, iteration):
                 index = worddic.index(next_word)
                 labels.append(index)
             sample = generateFeatures(featurelist, lastwords, catFeatures, stars, price, name, i)
-            samples.append(np.array(sample))
+            if samples == None:
+                samples = sample
+            else:
+                print(samples.shape)
+                samples = scipy.sparse.vstack([samples, sample])
     #print("Done!")
-    samples = np.array(samples)
     labels = np.array(labels)
     return samples, labels
 
@@ -383,8 +390,6 @@ def generateReview(classifier, product, featurelist, worddictionary, randomness=
 #######################
 
 if __name__ == '__main__':
-
-
     global uniqueCats
     global listNullCats
 
@@ -405,9 +410,8 @@ if __name__ == '__main__':
     uniqueCats = getUniqueCategories(metaData)
     print("Done!")
     lenUniqueCats = len(uniqueCats)
-    listNullCats = []
-    for i in range(lenUniqueCats):
-        listNullCats.append(0)
+    listNullCats = scipy.sparse.csr_matrix((1,lenUniqueCats))
+    print(listNullCats)
 
     # creating dictionary of words
     print("reading review Data ...")
@@ -444,9 +448,10 @@ if __name__ == '__main__':
                 break
             samples, labels = generateSamples(reviewsData[start:end], metaData, worddic, sampletype, i)
             try:
-                trainClassifier(clf, np.array(samples), np.array(labels), len(worddic))
-            except:
-                print("We got an error while partial fit and ignored it.")
+                trainClassifier(clf, samples, labels, len(worddic))
+            except Exception as e:
+                print(e)
+                print("We got an error while partial fit and ignored it!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             #saveClassifier(clf, str(i*v_samplePackageSize)+"save.nb" , v_version)
             saveClassifier(clf, "save.nb" , v_version)
 
