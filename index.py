@@ -23,9 +23,9 @@ global listNullCats
 ### MAIN VARIABLES
 
 # how much words are viewed at during classification
-v_sequenceLength = 3
+v_sequenceLength = 5
 # how many reviews should be used for training?
-v_sampleReviewSize = 257527
+v_sampleReviewSize = 16500
 # how many reviews should be trained at once? (lower if RAM is overloaded)
 v_samplePackageSize = 10
 # which timestamps should be saved and feedbacked?
@@ -39,13 +39,13 @@ v_replaceInString = ["&quot;", "\"", "(", ")", ";"]
 v_learningAlgorithm = "" #not implemented yet
 v_messageStart = "#beginningOfText"
 v_messageEnd = "#endOfText"
-v_chooseTrainingRatingRangeStart = 5.0
+v_chooseTrainingRatingRangeStart = 3.0
 v_chooseTrainingRatingRangeEnd = 5.0
-v_chooseTrainingHelpfulRangeStart = 0.0
+v_chooseTrainingHelpfulRangeStart = 0.5
 v_chooseTrainingHelpfulRangeEnd = 1.0
-v_minTrainingHelpful = 0.0
-v_chooseTrainingWordsRangeStart = 1
-v_chooseTrainingWordsRangeEnd = 150
+v_minTrainingHelpful = 4.0
+v_chooseTrainingWordsRangeStart = 10
+v_chooseTrainingWordsRangeEnd = 400
 v_chooseSimpleWords = False
 v_manipulateTrainingReplace = True
 v_manipulateTrainingLower = False
